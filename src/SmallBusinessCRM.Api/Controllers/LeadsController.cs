@@ -17,7 +17,8 @@ public sealed class LeadsController(
     IRealtimeNotifier realtime,
     IEmailDispatcher email,
     ICurrentUserService currentUser,
-    ICrmCacheService cache) : ControllerBase
+    ICrmCacheService cache,
+    IWebhookNotificationService webhooks) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct) =>
@@ -147,6 +148,11 @@ public sealed class LeadsController(
             priorityScore = lead.PriorityScore,
             updatedBy = User.Identity?.Name ?? "User"
         }, ct);
+
+        if (lead.Status == LeadStatus.ClosedWon && previous != LeadStatus.ClosedWon)
+        {
+            await webhooks.NotifyDealWonAsync(lead, User.Identity?.Name ?? "Representative", ct);
+        }
 
         await cache.InvalidateReportsCacheAsync("default", ct);
         return Ok(new { lead.Id, lead.Status });

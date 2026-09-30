@@ -6,8 +6,12 @@ using SmallBusinessCRM.Api.Services;
 namespace SmallBusinessCRM.Api.Data;
 public class CrmDbContext(DbContextOptions<CrmDbContext> options, ICurrentUserService currentUser) : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>(options) {
     public DbSet<Lead> Leads => Set<Lead>();
-    public DbSet<CrmTask> Tasks => Set<CrmTask>(); public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<CrmTask> Tasks => Set<CrmTask>();
+    public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<EmailTracking> EmailTrackings => Set<EmailTracking>();
+    public DbSet<CalendarIntegration> CalendarIntegrations => Set<CalendarIntegration>();
+
     protected override void OnModelCreating(ModelBuilder b) {
         base.OnModelCreating(b);
         b.Entity<Lead>().Property(x => x.Value).HasPrecision(18,2);
@@ -21,6 +25,11 @@ public class CrmDbContext(DbContextOptions<CrmDbContext> options, ICurrentUserSe
             (currentUser.IsAuthenticated && task.Lead.AssignedUserId == currentUser.UserId));
         b.Entity<ActivityLog>().HasQueryFilter(activity => currentUser.IsManagerOrAdmin ||
             (currentUser.IsAuthenticated && activity.Lead.AssignedUserId == currentUser.UserId));
+        b.Entity<EmailTracking>().HasQueryFilter(email => currentUser.IsManagerOrAdmin ||
+            (currentUser.IsAuthenticated && email.Lead.AssignedUserId == currentUser.UserId));
+        b.Entity<CalendarIntegration>().HasQueryFilter(cal => currentUser.IsManagerOrAdmin ||
+            (currentUser.IsAuthenticated && cal.UserId == currentUser.UserId));
+
         b.Entity<Lead>().HasOne(x => x.AssignedUser).WithMany(x => x.AssignedLeads).HasForeignKey(x => x.AssignedUserId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<Lead>().HasOne(x => x.DeletedByUser).WithMany().HasForeignKey(x => x.DeletedByUserId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<CrmTask>().HasOne(x => x.Lead).WithMany(x => x.Tasks).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
@@ -28,5 +37,8 @@ public class CrmDbContext(DbContextOptions<CrmDbContext> options, ICurrentUserSe
         b.Entity<ActivityLog>().HasOne(x => x.Lead).WithMany(x => x.ActivityLogs).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<ActivityLog>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<AuditLog>().HasOne(x => x.ActorUser).WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+        b.Entity<EmailTracking>().HasOne(x => x.Lead).WithMany(x => x.EmailTrackings).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<EmailTracking>().HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.SetNull);
+        b.Entity<CalendarIntegration>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }

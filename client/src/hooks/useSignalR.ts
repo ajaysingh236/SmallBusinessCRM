@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 export interface SignalRCallbacks {
   onLeadStageChanged?: (data: { leadId: number; companyName: string; previousStatus: string; newStatus: string; priorityScore: number; updatedBy: string }) => void;
-  onLeadScored?: (data: { leadId: number; priorityScore: number }) => void;
+  onLeadScored?: (data: { leadId: number; priorityScore: number; conversionProbability?: number; predictedCloseDays?: number }) => void;
   onLeadAssigned?: (data: { leadId: number; title: string; message: string }) => void;
   onActivityCreated?: (data: { leadId: number; lead: string; type: string; message: string; occurredUtc: string }) => void;
 }

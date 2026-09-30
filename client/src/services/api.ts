@@ -5,7 +5,11 @@ import {
   AnalyticsReport,
   ActivityLog,
   JwtLoginResponse,
-  AuditLog
+  AuditLog,
+  LeadScoringPrediction,
+  EmailTracking,
+  CalendarStatus,
+  CalendarEvent
 } from '../types';
 
 const API_BASE = '';
@@ -88,6 +92,26 @@ export const api = {
     });
   },
 
+  async updateLeadStatus(id: number, status: LeadStatus): Promise<{ id: number; status: LeadStatus }> {
+    return this.updateStage(id, status);
+  },
+
+  async createLead(data: {
+    title: string;
+    companyName: string;
+    contactName: string;
+    email?: string;
+    phone?: string;
+    value: number;
+    assignedUserId?: number;
+  }): Promise<Lead> {
+    return request<Lead>('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  },
+
   async deleteLead(id: number): Promise<void> {
     return request<void>(`/api/leads/${id}`, { method: 'DELETE' });
   },
@@ -108,6 +132,57 @@ export const api = {
   async recalculateScores(): Promise<{ processed: number }> {
     return request<{ processed: number }>('/api/leadscoring/recalculate-all', {
       method: 'POST'
+    });
+  },
+
+  async recalculateLeadScore(leadId: number, strategy?: string): Promise<LeadScoringPrediction> {
+    const query = strategy ? `?strategy=${encodeURIComponent(strategy)}` : '';
+    return request<LeadScoringPrediction>(`/api/leadscoring/recalculate/${leadId}${query}`, {
+      method: 'POST'
+    });
+  },
+
+  async getLeadPrediction(leadId: number): Promise<LeadScoringPrediction> {
+    return request<LeadScoringPrediction>(`/api/leadscoring/prediction/${leadId}`);
+  },
+
+  // Email Tracking & Drip Workflows
+  async getLeadEmailTracking(leadId: number): Promise<EmailTracking[]> {
+    return request<EmailTracking[]>(`/api/email/tracking/${leadId}`);
+  },
+
+  async triggerDripStep(leadId: number): Promise<{ trackingId: string; stepName: string; subject: string; recipient: string }> {
+    return request<{ trackingId: string; stepName: string; subject: string; recipient: string }>(
+      `/api/email/drip/trigger/${leadId}`,
+      { method: 'POST' }
+    );
+  },
+
+  // Calendar Integrations
+  async getCalendarStatus(): Promise<CalendarStatus> {
+    return request<CalendarStatus>('/api/calendar/status');
+  },
+
+  async connectCalendar(provider: string): Promise<{ message: string; provider: string; isSyncEnabled: boolean }> {
+    return request<{ message: string; provider: string; isSyncEnabled: boolean }>('/api/calendar/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider })
+    });
+  },
+
+  async syncCalendar(): Promise<{ syncedCount: number; events: CalendarEvent[] }> {
+    return request<{ syncedCount: number; events: CalendarEvent[] }>('/api/calendar/sync', {
+      method: 'POST'
+    });
+  },
+
+  // Webhook Notifications
+  async testWebhook(target: string, message: string): Promise<{ target: string; dispatched: boolean }> {
+    return request<{ target: string; dispatched: boolean }>('/api/webhooks/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, message })
     });
   },
 

@@ -14,6 +14,7 @@ using SmallBusinessCRM.Api.Hubs;
 using SmallBusinessCRM.Api.Middleware;
 using SmallBusinessCRM.Api.Models;
 using SmallBusinessCRM.Api.Services;
+using SmallBusinessCRM.Api.Services.LeadScoring;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -171,11 +172,18 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Infrastructure & Domain Services
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("WebhooksClient");
 builder.Services.AddSingleton<IResiliencePolicyService, ResiliencePolicyService>();
 builder.Services.AddScoped<ICrmCacheService, CrmCacheService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthorizationHandler, LeadAuthorizationHandler>();
+builder.Services.AddSingleton<ILeadScoringStrategy, MachineLearningLeadScoringStrategy>();
+builder.Services.AddSingleton<ILeadScoringStrategy, HeuristicLeadScoringStrategy>();
 builder.Services.AddScoped<ILeadScoringService, LeadScoringService>();
+builder.Services.AddScoped<IDripEmailService, DripEmailService>();
+builder.Services.AddScoped<ICalendarSyncService, CalendarSyncService>();
+builder.Services.AddScoped<IWebhookNotificationService, WebhookNotificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();

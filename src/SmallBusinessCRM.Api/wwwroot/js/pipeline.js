@@ -53,14 +53,20 @@ function createLeadCardElement(lead) {
             ${escapeHtml(lead.title)}
         </h3>
 
-        <div class="flex items-center justify-between text-xs mb-3">
+        <div class="flex items-center justify-between text-xs mb-2">
             <span class="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
                 ${money(lead.value)}
             </span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getPriorityBadgeClass(lead.priorityScore)}">
-                <i class="fa-solid fa-bolt-lightning text-[10px] mr-1"></i>Score ${lead.priorityScore}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getPriorityBadgeClass(lead.conversionProbability ? Math.round(lead.conversionProbability * 100) : lead.priorityScore)}">
+                <i class="fa-solid fa-bolt-lightning text-[10px] mr-1 text-amber-500"></i>${lead.conversionProbability ? Math.round(lead.conversionProbability * 100) + '% AI' : 'Score ' + lead.priorityScore}
             </span>
         </div>
+
+        ${lead.predictedCloseDays ? `
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 mb-1.5 flex items-center">
+                <i class="fa-solid fa-arrow-trend-up text-indigo-400 mr-1"></i>Est. close in ~${lead.predictedCloseDays}d
+            </div>
+        ` : ''}
 
         ${isOverdue ? `
             <div class="mb-2.5 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">

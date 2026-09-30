@@ -1,22 +1,43 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SmallBusinessCRM.Api.Data;
 using SmallBusinessCRM.Api.Models;
+using SmallBusinessCRM.Api.Services.LeadScoring;
 
 namespace SmallBusinessCRM.Api.Services;
 
 public interface ILeadScoringService
 {
     Task<int?> RecalculateAsync(int leadId, CancellationToken ct = default);
+    Task<LeadScoringResult?> ScoreLeadAsync(int leadId, string? strategyName = null, CancellationToken ct = default);
     Task<int> RecalculateAllAsync(CancellationToken ct = default);
 }
 
 public class LeadScoringService(
     CrmDbContext db,
+    IEnumerable<ILeadScoringStrategy> strategies,
     IRealtimeNotifier realtime,
     ILogger<LeadScoringService> logger) : ILeadScoringService
 {
+    private readonly List<ILeadScoringStrategy> _strategies = strategies.ToList();
+
     public async Task<int?> RecalculateAsync(int leadId, CancellationToken ct = default)
     {
+        var result = await ScoreLeadAsync(leadId, null, ct);
+        return result?.PriorityScore;
+    }
+
+    public async Task<LeadScoringResult?> ScoreLeadAsync(int leadId, string? strategyName = null, CancellationToken ct = default)
+    {
+        var strategy = !string.IsNullOrWhiteSpace(strategyName)
+            ? _strategies.FirstOrDefault(s => string.Equals(s.StrategyName, strategyName, StringComparison.OrdinalIgnoreCase))
+            : _strategies.FirstOrDefault(s => s is MachineLearningLeadScoringStrategy) ?? _strategies.FirstOrDefault();
+
+        if (strategy is null)
+        {
+            strategy = new MachineLearningLeadScoringStrategy();
+        }
+
         const int maxRetries = 3;
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
@@ -30,26 +51,19 @@ public class LeadScoringService(
                 if (lead is null) return null;
 
                 var now = DateTime.UtcNow;
-                var score = 0;
-                score += lead.Value >= 50000 ? 35 : lead.Value >= 10000 ? 20 : 8;
+                var scoringResult = await strategy.ScoreLeadAsync(lead, ct);
 
-                var recentTouches = lead.ActivityLogs.Count(x => x.OccurredUtc >= now.AddDays(-30));
-                score += Math.Min(25, recentTouches * 5);
-
-                score += lead.Tasks.Any(x => !x.IsCompleted && x.DueDateUtc >= now && x.DueDateUtc <= now.AddDays(7)) ? 15 : 0;
-                score -= lead.Tasks.Count(x => !x.IsCompleted && x.DueDateUtc < now) * 8;
-
-                if (!lead.ActivityLogs.Any(x => x.OccurredUtc >= now.AddDays(-30))) score -= 10;
-                if (lead.Status == LeadStatus.DemoScheduled || lead.Status == LeadStatus.ProposalSent) score += 10;
-
-                lead.PriorityScore = Math.Clamp(score, 0, 100);
+                lead.PriorityScore = scoringResult.PriorityScore;
+                lead.ConversionProbability = scoringResult.ConversionProbability;
+                lead.PredictedCloseDays = scoringResult.PredictedCloseDays;
+                lead.AiScoreExplanation = JsonSerializer.Serialize(scoringResult.Factors);
                 lead.LastUpdatedUtc = now;
 
                 db.ActivityLogs.Add(new ActivityLog
                 {
                     LeadId = lead.Id,
                     Type = ActivityType.System,
-                    Message = $"Priority score recalculated to {lead.PriorityScore}.",
+                    Message = $"AI Lead Scoring ({strategy.StrategyName}): Priority {lead.PriorityScore}/100, Win Probability {lead.ConversionProbability:P0}, Est. Close {lead.PredictedCloseDays} days.",
                     OccurredUtc = now
                 });
 
@@ -58,14 +72,22 @@ public class LeadScoringService(
                 await realtime.LeadScoredAsync(new
                 {
                     leadId = lead.Id,
-                    priorityScore = lead.PriorityScore
+                    priorityScore = lead.PriorityScore,
+                    conversionProbability = lead.ConversionProbability,
+                    predictedCloseDays = lead.PredictedCloseDays,
+                    factors = scoringResult.Factors,
+                    strategy = strategy.StrategyName
                 }, ct);
 
-                return lead.PriorityScore;
+                logger.LogInformation(
+                    "Lead {LeadId} scored via {Strategy}: Priority={Score}, WinProbability={Prob:P0}",
+                    lead.Id, strategy.StrategyName, lead.PriorityScore, lead.ConversionProbability);
+
+                return scoringResult;
             }
             catch (DbUpdateConcurrencyException ex) when (attempt < maxRetries)
             {
-                logger.LogWarning(ex, "Concurrency conflict during priority score recalculation for Lead {LeadId}. Retry attempt {Attempt}/{MaxRetries}...", leadId, attempt, maxRetries);
+                logger.LogWarning(ex, "Concurrency conflict during AI lead score recalculation for Lead {LeadId}. Retry attempt {Attempt}/{MaxRetries}...", leadId, attempt, maxRetries);
                 foreach (var entry in ex.Entries)
                 {
                     await entry.ReloadAsync(ct);
@@ -81,7 +103,7 @@ public class LeadScoringService(
         var ids = await db.Leads.Select(x => x.Id).ToListAsync(ct);
         foreach (var id in ids)
         {
-            await RecalculateAsync(id, ct);
+            await ScoreLeadAsync(id, null, ct);
         }
         return ids.Count;
     }

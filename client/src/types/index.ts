@@ -20,6 +20,51 @@ export interface CrmTask {
   assignedUserId?: number;
 }
 
+export interface ScoringFactor {
+  featureName: string;
+  impactScore: number;
+  description: string;
+  category: string;
+}
+
+export interface LeadScoringPrediction {
+  leadId: number;
+  priorityScore: number;
+  conversionProbability: number;
+  predictedCloseDays?: number;
+  factors: ScoringFactor[];
+  strategy: string;
+}
+
+export interface EmailTracking {
+  id: string;
+  subject: string;
+  recipientEmail: string;
+  stepName: string;
+  sentAtUtc: string;
+  isOpened: boolean;
+  openedAtUtc?: string;
+  clickCount: number;
+  lastClickedAtUtc?: string;
+  lastClickedUrl?: string;
+}
+
+export interface CalendarStatus {
+  isConnected: boolean;
+  provider?: string;
+  lastSyncedAtUtc?: string;
+  isSyncEnabled: boolean;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  startUtc: string;
+  endUtc: string;
+  location?: string;
+}
+
 export interface Lead {
   id: number;
   title: string;
@@ -30,6 +75,12 @@ export interface Lead {
   value: number;
   status: LeadStatus;
   priorityScore: number;
+  conversionProbability?: number;
+  aiScoreExplanation?: string;
+  predictedCloseDays?: number;
+  dripCampaignStep?: number;
+  lastDripEmailSentUtc?: string;
+  isDripPaused?: boolean;
   assignedUserId?: number;
   assignedUser?: ApplicationUser;
   createdAt: string;

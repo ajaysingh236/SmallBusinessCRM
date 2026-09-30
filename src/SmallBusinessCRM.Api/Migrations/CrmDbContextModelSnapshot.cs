@@ -317,6 +317,50 @@ namespace SmallBusinessCRM.Api.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("SmallBusinessCRM.Api.Models.CalendarIntegration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccessToken")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("CalendarId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSyncEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastSyncedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RefreshToken")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CalendarIntegrations");
+                });
+
             modelBuilder.Entity("SmallBusinessCRM.Api.Models.CrmTask", b =>
                 {
                     b.Property<int>("Id")
@@ -360,6 +404,69 @@ namespace SmallBusinessCRM.Api.Migrations
                     b.ToTable("Tasks");
                 });
 
+            modelBuilder.Entity("SmallBusinessCRM.Api.Models.EmailTracking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ClickCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsOpened")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastClickedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastClickedUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("LeadId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("OpenedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("StepName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeadId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("EmailTrackings");
+                });
+
             modelBuilder.Entity("SmallBusinessCRM.Api.Models.Lead", b =>
                 {
                     b.Property<int>("Id")
@@ -367,6 +474,9 @@ namespace SmallBusinessCRM.Api.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AiScoreExplanation")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("AssignedUserId")
                         .HasColumnType("int");
@@ -381,6 +491,9 @@ namespace SmallBusinessCRM.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<double?>("ConversionProbability")
+                        .HasColumnType("float");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -390,17 +503,29 @@ namespace SmallBusinessCRM.Api.Migrations
                     b.Property<int?>("DeletedByUserId")
                         .HasColumnType("int");
 
+                    b.Property<int>("DripCampaignStep")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDripPaused")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastDripEmailSentUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("LastUpdatedUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Phone")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PredictedCloseDays")
+                        .HasColumnType("int");
 
                     b.Property<int>("PriorityScore")
                         .HasColumnType("int");
@@ -510,6 +635,17 @@ namespace SmallBusinessCRM.Api.Migrations
                     b.Navigation("ActorUser");
                 });
 
+            modelBuilder.Entity("SmallBusinessCRM.Api.Models.CalendarIntegration", b =>
+                {
+                    b.HasOne("SmallBusinessCRM.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SmallBusinessCRM.Api.Models.CrmTask", b =>
                 {
                     b.HasOne("SmallBusinessCRM.Api.Models.ApplicationUser", "AssignedUser")
@@ -526,6 +662,24 @@ namespace SmallBusinessCRM.Api.Migrations
                     b.Navigation("AssignedUser");
 
                     b.Navigation("Lead");
+                });
+
+            modelBuilder.Entity("SmallBusinessCRM.Api.Models.EmailTracking", b =>
+                {
+                    b.HasOne("SmallBusinessCRM.Api.Models.Lead", "Lead")
+                        .WithMany("EmailTrackings")
+                        .HasForeignKey("LeadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmallBusinessCRM.Api.Models.CrmTask", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Lead");
+
+                    b.Navigation("Task");
                 });
 
             modelBuilder.Entity("SmallBusinessCRM.Api.Models.Lead", b =>
@@ -553,6 +707,8 @@ namespace SmallBusinessCRM.Api.Migrations
             modelBuilder.Entity("SmallBusinessCRM.Api.Models.Lead", b =>
                 {
                     b.Navigation("ActivityLogs");
+
+                    b.Navigation("EmailTrackings");
 
                     b.Navigation("Tasks");
                 });

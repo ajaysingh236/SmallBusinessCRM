@@ -20,11 +20,15 @@ public class ReminderWorker(
             {
                 using var scope = scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<CrmDbContext>();
+                var webhooks = scope.ServiceProvider.GetRequiredService<IWebhookNotificationService>();
+                var dripService = scope.ServiceProvider.GetRequiredService<IDripEmailService>();
 
                 // In background jobs, there is no active authenticated HTTP user context.
                 // We must use IgnoreQueryFilters() so global multitenancy/ownership filters do not exclude overdue tasks.
                 var due = await db.Tasks
                     .IgnoreQueryFilters()
+                    .Include(x => x.Lead)
+                    .Include(x => x.AssignedUser)
                     .Where(x => !x.IsCompleted && !x.ReminderSent && x.DueDateUtc <= DateTime.UtcNow)
                     .ToListAsync(stoppingToken);
 
@@ -41,10 +45,25 @@ public class ReminderWorker(
                             Message = $"Reminder: task '{task.Title}' is overdue.",
                             OccurredUtc = DateTime.UtcNow
                         });
+
+                        // Dispatch external alert via Webhook
+                        var repName = task.AssignedUser?.FullName ?? "Assigned Representative";
+                        var companyName = task.Lead?.CompanyName ?? "Lead";
+                        await webhooks.NotifyOverdueTaskAsync(task, repName, companyName, stoppingToken);
                     }
 
                     await db.SaveChangesAsync(stoppingToken);
                     logger.LogInformation("Processed and logged reminders for {Count} overdue task(s).", due.Count);
+                }
+
+                // Process scheduled multi-step drip email campaigns
+                try
+                {
+                    await dripService.ProcessPendingDripEmailsAsync(stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Error processing pending automated drip emails in background worker.");
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
