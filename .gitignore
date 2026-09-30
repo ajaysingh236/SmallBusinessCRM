@@ -2,3 +2,12 @@ bin/
 obj/
 .vs/
 appsettings.Development.json
+node_modules/
+client/node_modules/
+client/dist/
+dist/
+.env
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

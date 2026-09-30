@@ -1,36 +1,106 @@
-# Web Based CRM for Small Businesses
+# SmallBusinessCRM - Production-Grade Cloud CRM
 
-ASP.NET Core 8 CRM mini-project for BCA Semester V, Parul University.
+ASP.NET Core 8 Web API + Decoupled React 18 TypeScript SPA + Redis Distributed Caching + Polly Resilience + Serilog/Seq Logging + OpenTelemetry Metrics.
 
-## Quick start
+---
 
-1. Install .NET 8 SDK and SQL Server LocalDB/SQL Server.
-2. Set `ConnectionStrings__CrmDatabase` or edit `appsettings.json`.
-3. From `src/SmallBusinessCRM.Api`, run `dotnet restore`, `dotnet ef migrations add InitialIdentityRbac`, `dotnet ef database update`, then `dotnet run`.
-4. Browse to the URL shown by ASP.NET Core. Seeded users are Admin, Manager, and Representative accounts.
+## Architecture Overview
 
-The SPA-style Bootstrap dashboard is served from `wwwroot`. API documentation is available at `/swagger` in Development.
+```
+                            +------------------------------------+
+                            |         React 18 + Vite SPA        |
+                            |       (Tailwind + SignalR Hub)     |
+                            +-----------------+------------------+
+                                              | Reverse Proxy / CORS
+                                              v
++-----------------------------------------------------------------------------------+
+|                            ASP.NET Core 8 Web API                                 |
+|  - JWT & Cookie Auth       - Global EF Query Filters     - Resilience (Polly v8)  |
+|  - CorrelationIdMiddleware - Serilog LogContext          - OpenTelemetry /metrics |
++-------------+---------------------+-------------------------------+---------------+
+              |                     |                               |
+              v                     v                               v
++-------------------+ +---------------------------+ +-------------------------------+
+|  MSSQL / SQLite   | |     Redis Distributed     | |     Seq Structured Logs       |
+|  (EF Core 8 DB)   | |  (L2 Cache with Fallback) | |  (Centralized Event Viewer)   |
++-------------------+ +---------------------------+ +-------------------------------+
+```
 
-## Project contents
+### Key Engineering Features (Phase 1 & Phase 2)
+1. **Decoupled Modern Frontend (`/client`)**: React 18, TypeScript, Vite, Tailwind CSS, Lucide icons, Sortable Kanban board, Chart.js analytics widgets, real-time SignalR notifications, dark/light theme switching, and accessible modals.
+2. **Enhanced Legacy Frontend (`/wwwroot`)**: Modernized responsive Tailwind UI with dark mode support, live stats, Chart.js visualizations, and zero-FOUC script.
+3. **Resilience & Fault Tolerance**: Polly v8 resilience pipelines featuring exponential backoff with jitter and circuit breaking for external HTTP dependencies.
+4. **Distributed Caching (`ICrmCacheService`)**: Redis-backed distributed cache with proactive invalidation on lead/task mutations and silent database fallback when Redis is offline.
+5. **Observability & Telemetry**:
+   - Correlation ID tracking across requests (`X-Correlation-ID` header and Serilog `LogContext`).
+   - Centralized structured logging sink to **Seq**.
+   - OpenTelemetry metrics exporter exposing runtime and HTTP metrics on `/metrics`.
+6. **Containerization**: Multi-stage, non-root Docker builds for API and client SPA orchestrated with **Docker Compose**.
 
-- `src/SmallBusinessCRM.Api`: Web API, EF Core model, services, background reminder worker, dashboard.
-- `database/initial-schema.sql`: standalone SQL Server schema equivalent for SSMS use.
-- `docs`: academic report source and generated project report.
+---
 
-The solution uses ASP.NET Core Identity cookies with Admin, Manager, and SalesRepresentative roles. Seeded test passwords are `ChangeMe123!`; change them before any non-local deployment.
+## Quick Start (Two Ways)
 
-## Authorization design
+### Option 1: One-Command Docker Compose (Full Stack)
 
-- `POST /account/login` signs a user in with an Identity cookie and redirects Admin to `/admin`, Manager to `/manager`, and SalesRepresentative to `/sales`.
-- `ICurrentUserService` exposes claims-derived identity data to the application layer.
-- EF Core global filters protect `Lead`, `CrmTask`, and `ActivityLog` rows for sales representatives. Admin and Manager queries bypass those filters.
-- `GET /api/leads/audit` is manager/admin-only and uses `IgnoreQueryFilters()` explicitly for audited access.
-- The update/delete endpoints evaluate a resource authorization handler. Representatives can edit their assigned leads but cannot delete; managers and admins can perform both.
+Ensure Docker Desktop is running, then:
 
-## Real-time CRM operations
+```bash
+# 1. Copy the environment template
+cp .env.example .env
 
-- `/manager` and `/sales` provide the drag-and-drop Kanban pipeline. A card drop calls `PATCH /api/leads/{id}/status` and broadcasts an activity through SignalR.
-- Managers and admins assign leads using `PATCH /api/leads/{id}/assignment`; the representative receives a `leadAssigned` toast through `/hubs/crm`.
-- `/admin` provides CSV lead import/export, user creation, audit history, and soft-deleted lead recovery.
-- Configure the `Smtp` section using environment variables such as `Smtp__Host` and `Smtp__Password`. Email remains disabled until `Smtp__Enabled=true` is set.
-- After pulling these changes, create and apply a new migration: `dotnet ef migrations add RealTimePipelineAuditAndMail` then `dotnet ef database update`.
+# 2. Launch DB, Redis, Seq, API, and React Client
+docker compose up -d --build
+```
+
+Access the applications:
+- **React 18 SPA Client**: [http://localhost:3000](http://localhost:3000)
+- **ASP.NET Core Web API / Swagger**: [http://localhost:5000/swagger](http://localhost:5000/swagger)
+- **OpenTelemetry Prometheus Metrics**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
+- **Seq Log Viewer**: [http://localhost:5341](http://localhost:5341)
+
+### Option 2: Local Development Run
+
+#### 1. Backend (.NET 8 Web API)
+```bash
+# Restore & build
+dotnet restore
+dotnet build
+
+# Run unit & integration tests
+dotnet test
+
+# Start the API server (uses SQLite or LocalDB automatically)
+cd src/SmallBusinessCRM.Api
+dotnet run
+```
+API runs on `http://localhost:5000` (or `https://localhost:5001`).
+
+#### 2. Frontend (React 18 + Vite SPA)
+```bash
+cd client
+npm install
+npm run dev
+```
+Client dev server runs on `http://localhost:3000` and automatically proxies `/api`, `/account`, and `/hubs` to the API on port 5000.
+
+---
+
+## Seeded Credentials
+
+| Role | Username | Password |
+| :--- | :--- | :--- |
+| **Admin** | `admin` | `ChangeMe123!` |
+| **Manager** | `manager` | `ChangeMe123!` |
+| **Sales Rep** | `sales` | `ChangeMe123!` |
+
+---
+
+## Testing & Verification
+
+Run the entire xUnit test suite (33 tests including cache fallbacks, Polly resilience, and analytics reports):
+
+```bash
+dotnet test
+```
+
