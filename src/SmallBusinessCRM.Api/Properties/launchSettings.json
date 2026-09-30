@@ -1,32 +1,21 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
+    "SmallBusinessCRM.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5000;https://localhost:5001",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
     "SmallBusinessCRM.Api (HTTPS)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "login.html",
       "applicationUrl": "https://localhost:7198;http://localhost:5198",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "SmallBusinessCRM.Api (HTTP)": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "launchUrl": "login.html",
-      "applicationUrl": "http://localhost:5198",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "SmallBusinessCRM.Api (Default)": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "launchUrl": "login.html",
-      "applicationUrl": "https://localhost:59390;http://localhost:59391",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

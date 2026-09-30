@@ -37,7 +37,7 @@ public class CrmDbContext(DbContextOptions<CrmDbContext> options, ICurrentUserSe
         b.Entity<ActivityLog>().HasOne(x => x.Lead).WithMany(x => x.ActivityLogs).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<ActivityLog>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<AuditLog>().HasOne(x => x.ActorUser).WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
-        b.Entity<EmailTracking>().HasOne(x => x.Lead).WithMany(x => x.EmailTrackings).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<EmailTracking>().HasOne(x => x.Lead).WithMany(x => x.EmailTrackings).HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<EmailTracking>().HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<CalendarIntegration>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
