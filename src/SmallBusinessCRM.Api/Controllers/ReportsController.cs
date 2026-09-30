@@ -1,0 +1,5 @@
+using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc; using Microsoft.EntityFrameworkCore; using SmallBusinessCRM.Api.Data; using SmallBusinessCRM.Api.Models;
+namespace SmallBusinessCRM.Api.Controllers;
+[ApiController,Route("api/reports"),Authorize(Roles="Admin,Manager")] public class ReportsController(CrmDbContext db):ControllerBase {
+ [HttpGet("dashboard")] public async Task<IActionResult> Dashboard(CancellationToken ct){var leads=await db.Leads.ToListAsync(ct);var total=leads.Count;var won=leads.Count(x=>x.Status==LeadStatus.ClosedWon);var open=leads.Where(x=>x.Status is not LeadStatus.ClosedWon and not LeadStatus.ClosedLost).ToList();var overdue=await db.Tasks.CountAsync(x=>!x.IsCompleted&&x.DueDateUtc<DateTime.UtcNow,ct);return Ok(new{totalLeads=total,openPipeline=open.Sum(x=>x.Value),conversionRate=total==0?0:Math.Round(won*100m/total,2),overdueTasks=overdue,workload=await db.Users.Where(x=>x.IsActive).Select(u=>new{user=u.FullName,leads=u.AssignedLeads.Count}).ToListAsync(ct),pipeline=leads.GroupBy(x=>x.Status).Select(g=>new{status=g.Key.ToString(),count=g.Count(),value=g.Sum(x=>x.Value)}).ToList()}); }
+}
