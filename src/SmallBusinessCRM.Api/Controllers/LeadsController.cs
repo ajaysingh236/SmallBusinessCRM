@@ -20,7 +20,11 @@ public sealed class LeadsController(
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct) =>
-        Ok(await db.Leads.Include(x => x.AssignedUser).OrderByDescending(x => x.PriorityScore).ToListAsync(ct));
+        Ok(await db.Leads
+            .Include(x => x.AssignedUser)
+            .Include(x => x.Tasks)
+            .OrderByDescending(x => x.PriorityScore)
+            .ToListAsync(ct));
 
     [HttpPost, Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> Create(CreateLeadRequest request, CancellationToken ct)
