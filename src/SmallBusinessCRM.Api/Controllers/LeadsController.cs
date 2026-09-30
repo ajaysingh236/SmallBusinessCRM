@@ -16,7 +16,8 @@ public sealed class LeadsController(
     IAuditService audit,
     IRealtimeNotifier realtime,
     IEmailDispatcher email,
-    ICurrentUserService currentUser) : ControllerBase
+    ICurrentUserService currentUser,
+    ICrmCacheService cache) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct) =>
@@ -46,6 +47,7 @@ public sealed class LeadsController(
         await db.SaveChangesAsync(ct);
 
         await audit.WriteAsync("LeadCreated", nameof(Lead), lead.Id, newValues: new { lead.Title, lead.Value, lead.AssignedUserId }, ct: ct);
+        await cache.InvalidateReportsCacheAsync("default", ct);
         return CreatedAtAction(nameof(Get), new { id = lead.Id }, lead);
     }
 
@@ -93,6 +95,7 @@ public sealed class LeadsController(
         }
 
         await audit.WriteAsync("LeadUpdated", nameof(Lead), lead.Id, previous, new { lead.Title, lead.Value, lead.AssignedUserId }, ct);
+        await cache.InvalidateReportsCacheAsync("default", ct);
         return Ok(lead);
     }
 
@@ -145,6 +148,7 @@ public sealed class LeadsController(
             updatedBy = User.Identity?.Name ?? "User"
         }, ct);
 
+        await cache.InvalidateReportsCacheAsync("default", ct);
         return Ok(new { lead.Id, lead.Status });
     }
 
@@ -181,6 +185,7 @@ public sealed class LeadsController(
         await audit.WriteAsync("LeadAssigned", nameof(Lead), lead.Id, new { assignedUserId = previousId }, new { lead.AssignedUserId }, ct);
         await realtime.LeadAssignedAsync(assignee.Id, new { leadId = lead.Id, title = lead.Title, message = $"You were assigned {lead.Title}." }, ct);
         await realtime.ActivityAsync(new { leadId = lead.Id, lead = lead.CompanyName, type = "Assignment", message = $"Lead assigned to {assignee.FullName}.", occurredUtc = DateTime.UtcNow }, ct);
+        await cache.InvalidateReportsCacheAsync("default", ct);
 
         return Ok(lead);
     }
@@ -208,6 +213,7 @@ public sealed class LeadsController(
         }
 
         await audit.WriteAsync("LeadSoftDeleted", nameof(Lead), lead.Id, new { lead.Title }, ct: ct);
+        await cache.InvalidateReportsCacheAsync("default", ct);
         return NoContent();
     }
 
@@ -231,6 +237,7 @@ public sealed class LeadsController(
         }
 
         await audit.WriteAsync("LeadRestored", nameof(Lead), lead.Id, ct: ct);
+        await cache.InvalidateReportsCacheAsync("default", ct);
         return Ok(lead);
     }
 

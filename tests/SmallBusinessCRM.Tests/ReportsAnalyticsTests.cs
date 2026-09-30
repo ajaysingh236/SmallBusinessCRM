@@ -22,6 +22,13 @@ public class ReportsAnalyticsTests
         public bool IsManagerOrAdmin => true;
     }
 
+    private class PassThroughCacheService : ICrmCacheService
+    {
+        public Task<T?> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? ttl = null, CancellationToken ct = default) => factory()!;
+        public Task RemoveAsync(string key, CancellationToken ct = default) => Task.CompletedTask;
+        public Task InvalidateReportsCacheAsync(string tenantId = "default", CancellationToken ct = default) => Task.CompletedTask;
+    }
+
     [Fact]
     public async Task Analytics_ReturnsExpectedAggregates()
     {
@@ -87,13 +94,14 @@ public class ReportsAnalyticsTests
 
         using (var db = new CrmDbContext(options, adminUser))
         {
-            var controller = new ReportsController(db);
+            var cache = new PassThroughCacheService();
+            var controller = new ReportsController(db, cache);
             var result = await controller.Analytics(CancellationToken.None);
 
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(okResult.Value);
 
-            var json = JsonSerializer.Serialize(okResult.Value);
+            var json = JsonSerializer.Serialize(okResult.Value, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
