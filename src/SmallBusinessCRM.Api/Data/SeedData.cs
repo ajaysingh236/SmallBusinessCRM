@@ -13,28 +13,26 @@ public static class SeedData
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
         var db = scope.ServiceProvider.GetRequiredService<CrmDbContext>();
 
-        try
-        {
-            await db.Database.MigrateAsync();
-        }
-        catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number is 1801 or 5170 or 1802)
-        {
-            logger.LogWarning(sqlEx, "SQL Server / LocalDB physical file collision (Error {ErrorNumber}): {ErrorMessage}. Checking database connectivity...", sqlEx.Number, sqlEx.Message);
-            if (!await db.Database.CanConnectAsync())
-            {
-                logger.LogError("Unable to connect to existing database after collision error.");
-                throw;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Database migration encountered an exception: {Message}. Attempting to check connectivity...", ex.Message);
-            if (!await db.Database.CanConnectAsync())
-            {
-                logger.LogError(ex, "Failed to connect to database after migration exception.");
-                throw;
-            }
-        }
+        
+var configuration = scope.ServiceProvider
+    .GetRequiredService<IConfiguration>();
+
+var dbProvider = configuration["DatabaseProvider"] ?? "SqlServer";
+
+if (string.Equals(
+    dbProvider,
+    "Sqlite",
+    StringComparison.OrdinalIgnoreCase))
+{
+    // SQLite: create tables from the current EF Core model.
+    await db.Database.EnsureCreatedAsync();
+}
+else
+{
+    // SQL Server: continue using the existing migrations.
+    await db.Database.MigrateAsync();
+}
+
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
