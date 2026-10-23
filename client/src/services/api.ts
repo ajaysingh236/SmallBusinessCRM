@@ -12,7 +12,7 @@ import {
   CalendarEvent
 } from '../types';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 function getAuthToken(): string | null {
   return localStorage.getItem('crm_jwt_token');
