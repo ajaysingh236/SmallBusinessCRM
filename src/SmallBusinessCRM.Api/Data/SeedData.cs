@@ -52,24 +52,53 @@ else
 
         foreach (var item in seeded)
         {
-            var user = await userManager.FindByEmailAsync(item.Email);
-            if (user is null)
-            {
-                user = new ApplicationUser
-                {
-                    UserName = item.Email,
-                    Email = item.Email,
-                    EmailConfirmed = true,
-                    FullName = item.Name,
-                    TenantId = "default"
-                };
+           foreach (var item in seeded)
+{
+    var user = await userManager.FindByEmailAsync(item.Email);
 
-                var result = await userManager.CreateAsync(user, item.Password);
-                if (!result.Succeeded)
-                    throw new InvalidOperationException(string.Join("; ", result.Errors.Select(x => x.Description)));
-            }
-            if (!await userManager.IsInRoleAsync(user, item.Role))
-                await userManager.AddToRoleAsync(user, item.Role);
+    if (user is null)
+    {
+        user = new ApplicationUser
+        {
+            UserName = item.Email,
+            Email = item.Email,
+            EmailConfirmed = true,
+            FullName = item.Name,
+            TenantId = "default",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, item.Password);
+
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join("; ", result.Errors.Select(x => x.Description)));
+        }
+    }
+    else if (!user.IsActive)
+    {
+        user.IsActive = true;
+        var result = await userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join("; ", result.Errors.Select(x => x.Description)));
+        }
+    }
+
+    if (!await userManager.IsInRoleAsync(user, item.Role))
+    {
+        var roleResult = await userManager.AddToRoleAsync(user, item.Role);
+
+        if (!roleResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join("; ", roleResult.Errors.Select(x => x.Description)));
+        }
+    }
+}
         }
 
         foreach (var legacyEmail in new[] { "admin@crm.local", "group@paruluniversity.ac.in" })
