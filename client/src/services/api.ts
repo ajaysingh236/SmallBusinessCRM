@@ -37,12 +37,21 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const response = await fetch(`${API_BASE}${endpoint}`, config);
 
-  if (response.status === 401) {
+ if (response.status === 401) {
+  // Only clear authentication when a protected API request fails.
+  // A failed login should show its error without triggering a logout event.
+  if (endpoint !== '/account/token') {
     localStorage.removeItem('crm_jwt_token');
     localStorage.removeItem('crm_user');
     window.dispatchEvent(new Event('auth:unauthorized'));
-    throw new Error('Unauthorized');
   }
+
+  const errorBody = await response.json().catch(() => ({
+    message: 'Unauthorized'
+  }));
+
+  throw new Error(errorBody.message || 'Unauthorized');
+}
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ message: response.statusText }));
