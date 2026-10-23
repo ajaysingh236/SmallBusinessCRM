@@ -129,7 +129,8 @@ if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSi
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SmallBusinessCRM";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SmallBusinessCRMClient";
 
-builder.Services.AddAuthentication()
+builder.Services.AddAuthentication(
+    Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
