@@ -52,23 +52,23 @@ else
 
         foreach (var item in seeded)
         {
-           foreach (var item in seeded)
+           foreach (var seededUser in seeded)
 {
-    var user = await userManager.FindByEmailAsync(item.Email);
+    var user = await userManager.FindByEmailAsync(seededUser.Email);
 
     if (user is null)
     {
         user = new ApplicationUser
         {
-            UserName = item.Email,
-            Email = item.Email,
+            UserName = seededUser.Email,
+            Email = seededUser.Email,
             EmailConfirmed = true,
-            FullName = item.Name,
+            FullName = seededUser.Name,
             TenantId = "default",
             IsActive = true
         };
 
-        var result = await userManager.CreateAsync(user, item.Password);
+        var result = await userManager.CreateAsync(user, seededUser.Password);
 
         if (!result.Succeeded)
         {
@@ -88,9 +88,9 @@ else
         }
     }
 
-    if (!await userManager.IsInRoleAsync(user, item.Role))
+    if (!await userManager.IsInRoleAsync(user, seededUser.Role))
     {
-        var roleResult = await userManager.AddToRoleAsync(user, item.Role);
+        var roleResult = await userManager.AddToRoleAsync(user, seededUser.Role);
 
         if (!roleResult.Succeeded)
         {
